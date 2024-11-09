@@ -2,16 +2,19 @@
   "name": "crypto-event-app",
   "version": "1.0.0",
   "description": "",
+  "type": "module",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start-broker": "node broker/index.js",
+    "start-receiver": "node receiver/index.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
-    "axios": "^1.7.7",
+    "axios": "^0.27.2",
+    "chalk": "^5.3.0",
     "dotenv": "^16.4.5",
-    "event": "^1.0.0"
+    "events": "^3.3.0",
+    "firebase": "^9.6.1",
+    "path": "^0.12.7",
+    "readline": "^1.3.0"
   }
 }
