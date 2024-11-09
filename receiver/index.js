@@ -21,7 +21,7 @@ eventEmitter.on("cryptoSelected", async (crypto) => {
   try {
     const cryptoId = cryptoIds[crypto.toLowerCase()];
     if (!cryptoId) {
-      console.log(chalk.red(`Cryptocurrencie ${crypto} has no support`));
+      console.log(chalk.red(`Cryptocurrencies ${crypto} has no support`));
       return;
     }
 
@@ -44,30 +44,15 @@ eventEmitter.on("cryptoSelected", async (crypto) => {
     }
 
     const data = response.data[cryptoId];
-    console.log(chalk.cyan("\n=== Cryptocurrencies information ==="));
-    console.log(chalk.white(`Crypto: ${chalk.yellow(cryptoId.toUpperCase())}`));
-    console.log(chalk.white(`Price: ${chalk.green("$" + data.usd)}`));
-    console.log(
-      chalk.white(
-        `24h Change: ${
-          data.usd_24h_change > 0
-            ? chalk.green(data.usd_24h_change?.toFixed(2) + "%")
-            : chalk.red(data.usd_24h_change?.toFixed(2) + "%")
-        }`,
-      ),
-    );
-    console.log(
-      chalk.white(`Market Cap: ${chalk.green("$" + data.usd_market_cap)}`),
-    );
-    console.log(
-      chalk.white(`24h Volume: ${chalk.green("$" + data.usd_24h_vol)}`),
-    );
-    console.log(
-      chalk.white(
-        `Last Updated: ${chalk.blue(new Date(data.last_updated_at * 1000).toLocaleString())}`,
-      ),
-    );
-    console.log(chalk.cyan("============================\n"));
+
+    eventEmitter.emit("cryptoData", {
+      name: cryptoId,
+      price: data.usd,
+      change: data.usd_24h_change?.toFixed(2),
+      marketCap: data.usd_market_cap,
+      volume: data.usd_24h_vol,
+      lastUpdated: new Date(data.last_updated_at * 1000).toLocaleString(),
+    });
   } catch (error) {
     if (error.response) {
       console.error(
@@ -76,16 +61,9 @@ eventEmitter.on("cryptoSelected", async (crypto) => {
         error.response.data,
       );
     } else {
-      console.error(
-        chalk.red("Error while fetching data about crypto:"),
-        error.message,
-      );
+      console.error(chalk.red("Error fetching data:"), error.message);
     }
   }
 });
 
-console.log(
-  chalk.magenta("Current registered events:"),
-  eventEmitter.eventNames(),
-);
 authMenu();
