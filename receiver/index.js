@@ -1,4 +1,4 @@
-import { eventEmitter, authMenu } from "../broker/index.js";
+import { eventEmitter, authMenu, cryptoMenu } from "../broker/index.js";
 import chalk from "chalk";
 import axios from "axios";
 import path from "path";
@@ -17,6 +17,29 @@ const cryptoIds = {
   doge: "dogecoin",
 };
 
+function drawLoadingBar(progress) {
+  const barLength = 30;
+  const filledLength = Math.round(barLength * (progress / 100));
+  const emptyLength = barLength - filledLength;
+
+  const filled = "#".repeat(filledLength);
+  const empty = ".".repeat(emptyLength);
+
+  process.stdout.write(
+    `\r${chalk.cyan("Loading: [")}${chalk.green(filled)}${chalk.gray(empty)}${chalk.cyan("]")} ${progress}%`,
+  );
+}
+
+async function simulateLoading() {
+  for (let i = 0; i <= 100; i += 10) {
+    drawLoadingBar(i);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  console.log("\n");
+}
+
+eventEmitter.removeAllListeners("cryptoSelected");
+
 eventEmitter.on("cryptoSelected", async (crypto) => {
   try {
     const cryptoId = cryptoIds[crypto.toLowerCase()];
@@ -25,7 +48,8 @@ eventEmitter.on("cryptoSelected", async (crypto) => {
       return;
     }
 
-    console.log(chalk.yellow(`Fetching data for ${cryptoId}...`));
+    console.log(chalk.yellow(`\nFetching data for ${cryptoId}...`));
+    await simulateLoading();
 
     const response = await axios.get(`${process.env.COINGECKO_API_URL}`, {
       params: {
@@ -39,13 +63,12 @@ eventEmitter.on("cryptoSelected", async (crypto) => {
     });
 
     if (!response.data || !response.data[cryptoId]) {
-      console.log(chalk.red(`No data for ${crypto}`));
-      return;
+      throw new Error(`No data for ${crypto}`);
     }
 
     const data = response.data[cryptoId];
 
-    eventEmitter.emit("cryptoData", {
+    eventEmitter.emit("updateCryptoData", {
       name: cryptoId,
       price: data.usd,
       change: data.usd_24h_change?.toFixed(2),
@@ -54,15 +77,12 @@ eventEmitter.on("cryptoSelected", async (crypto) => {
       lastUpdated: new Date(data.last_updated_at * 1000).toLocaleString(),
     });
   } catch (error) {
-    if (error.response) {
-      console.error(
-        chalk.red("API Error:"),
-        error.response.status,
-        error.response.data,
-      );
-    } else {
-      console.error(chalk.red("Error fetching data:"), error.message);
-    }
+    console.error(chalk.red("\nError:"), error.message);
+    eventEmitter.emit("updateCryptoData", {
+      name: crypto,
+      error: true,
+      message: "Failed to fetch data",
+    });
   }
 });
 

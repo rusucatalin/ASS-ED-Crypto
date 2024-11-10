@@ -10,6 +10,7 @@ import { fileURLToPath } from "url";
 import { dirname } from "path";
 import dotenv from "dotenv";
 import readline from "readline";
+import { portfolio } from "../services/portfolio.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -69,6 +70,16 @@ function drawCryptoMenu(selectedOption, previousData = "") {
       : chalk.white("  DOGE (Dogecoin)"),
   );
   console.log(
+    selectedOption === 3
+      ? chalk.green("> Add to Portfolio")
+      : chalk.white("  Add to Portfolio"),
+  );
+  console.log(
+    selectedOption === 4
+      ? chalk.green("> View Portfolio")
+      : chalk.white("  View Portfolio"),
+  );
+  console.log(
     chalk.gray(
       "\nUse arrow for navigation ↑↓ after selected option press ENTER",
     ),
@@ -116,10 +127,10 @@ function handleCryptoMenuKeypress(selectedOption) {
 
       if (key[0] === 27 && key[1] === 91) {
         if (key[2] === 65) {
-          currentOption = currentOption > 0 ? currentOption - 1 : 2;
+          currentOption = currentOption > 0 ? currentOption - 1 : 4;
         }
         if (key[2] === 66) {
-          currentOption = currentOption < 2 ? currentOption + 1 : 0;
+          currentOption = currentOption < 4 ? currentOption + 1 : 0;
         }
         drawCryptoMenu(currentOption, cryptoHistory);
         resolve(handleCryptoMenuKeypress(currentOption));
@@ -148,18 +159,78 @@ async function authMenu() {
   }
 }
 
+function addToPortfolio() {
+  return new Promise((resolve) => {
+    console.clear();
+    console.log(chalk.cyan("\n---| Add to Portfolio |---\n"));
+
+    rl.question(chalk.yellow("Enter crypto (BTC/ETH/DOGE): "), (crypto) => {
+      if (!["BTC", "ETH", "DOGE"].includes(crypto.toUpperCase())) {
+        console.log(chalk.red("\nInvalid cryptocurrency!"));
+        setTimeout(() => resolve(), 2000);
+        return;
+      }
+
+      rl.question(chalk.yellow("Enter amount: "), (amount) => {
+        if (isNaN(amount) || parseFloat(amount) <= 0) {
+          console.log(chalk.red("\nInvalid amount!"));
+          setTimeout(() => resolve(), 2000);
+          return;
+        }
+
+        const holding = portfolio.addHolding(
+          crypto.toUpperCase(),
+          parseFloat(amount),
+        );
+        console.log(
+          chalk.green(
+            `\nAdded ${amount} ${crypto.toUpperCase()} to portfolio!`,
+          ),
+        );
+        setTimeout(() => resolve(), 2000);
+      });
+    });
+  });
+}
+
+function viewPortfolio() {
+  return new Promise((resolve) => {
+    console.clear();
+    console.log(chalk.cyan("\n---| Your Portfolio |---\n"));
+
+    const holdings = portfolio.getAllHoldings();
+
+    if (holdings.length === 0) {
+      console.log(chalk.yellow("Your portfolio is empty!"));
+    } else {
+      holdings.forEach((holding) => {
+        console.log(
+          chalk.white(`${holding.crypto}: ${chalk.green(holding.amount)}`),
+        );
+      });
+    }
+
+    console.log(chalk.gray("\nPress any key to continue..."));
+    process.stdin.once("data", () => resolve());
+  });
+}
+
 async function cryptoMenu() {
   console.clear();
   drawCryptoMenu(0, cryptoHistory);
   const selectedOption = await handleCryptoMenuKeypress(0);
   const cryptoOptions = ["btc", "eth", "doge"];
 
-  console.log(
-    chalk.green(
-      `\nAi selectat: ${cryptoOptions[selectedOption].toUpperCase()}`,
-    ),
-  );
-  eventEmitter.emit("cryptoSelected", cryptoOptions[selectedOption]);
+  if (selectedOption === 3) {
+    await addToPortfolio();
+  } else if (selectedOption === 4) {
+    await viewPortfolio();
+  } else {
+    console.log(
+      chalk.green(`\nSelected: ${cryptoOptions[selectedOption].toUpperCase()}`),
+    );
+    eventEmitter.emit("cryptoSelected", cryptoOptions[selectedOption]);
+  }
 
   await new Promise((resolve) => setTimeout(resolve, 100));
   cryptoMenu();
@@ -205,25 +276,29 @@ eventEmitter.on("authenticated", () => {
   cryptoMenu();
 });
 
-eventEmitter.on("cryptoData", (data) => {
-  const newData = `
+eventEmitter.removeAllListeners("updateCryptoData");
+
+eventEmitter.on("updateCryptoData", (data) => {
+  let newData;
+  if (data.error) {
+    newData = `
+${chalk.cyan("---| Error |---")}
+${chalk.red(data.message)}
+${chalk.cyan("============================")}`;
+  } else {
+    newData = `
 ${chalk.cyan("---| Cryptocurrencies data |---")}
 ${chalk.white(`Crypto: ${chalk.yellow(data.name.toUpperCase())}`)}
 ${chalk.white(`Price: ${chalk.green("$" + data.price)}`)}
-${chalk.white(
-  `24h Change: ${
-    data.change > 0
-      ? chalk.green(data.change + "%")
-      : chalk.red(data.change + "%")
-  }`,
-)}
+${chalk.white(`24h Change: ${data.change > 0 ? chalk.green(data.change + "%") : chalk.red(data.change + "%")}`)}
 ${chalk.white(`Market Cap: ${chalk.green("$" + data.marketCap)}`)}
 ${chalk.white(`24h Volume: ${chalk.green("$" + data.volume)}`)}
 ${chalk.white(`Last Updated: ${chalk.blue(data.lastUpdated)}`)}
-${chalk.cyan("============================")}
-`;
+${chalk.cyan("============================")}`;
+  }
 
   cryptoHistory = cryptoHistory ? `${cryptoHistory}\n${newData}` : newData;
+
   console.clear();
   drawCryptoMenu(0, cryptoHistory);
 });
