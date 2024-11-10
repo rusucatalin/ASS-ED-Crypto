@@ -9,6 +9,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const PORTFOLIO_FILE = path.join(__dirname, "../data/portfolio.json");
 
+import { getDatabase, ref, push, set } from "firebase/database";
+import { auth } from "./firebase.js";
+
+const database = getDatabase();
+
 class Portfolio {
   constructor() {
     this.holdings = new Map();
@@ -38,11 +43,40 @@ class Portfolio {
     }
   }
 
-  addHolding(crypto, amount) {
+  async addHolding(crypto, amount, userName) {
     const currentAmount = this.holdings.get(crypto) || 0;
     this.holdings.set(crypto, currentAmount + parseFloat(amount));
-    this.savePortfolio();
+    await this.savePortfolio();
+
+    await this.saveTransactionToDatabase(crypto, amount, userName);
     return this.getHoldingInfo(crypto);
+  }
+
+  async saveTransactionToDatabase(crypto, amount) {
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        console.error("No authenticated user found");
+        return;
+      }
+
+      const email = user.email;
+      const transactionRef = ref(database, "portfolio_transactions");
+      const newTransactionRef = push(transactionRef);
+
+      await set(newTransactionRef, {
+        email,
+        crypto,
+        amount,
+        timestamp: Date.now(),
+      });
+
+      console.log(chalk.green(`\nTransaction saved to Firebase for ${email}`));
+    } catch (error) {
+      console.error(
+        chalk.red("Error saving transaction to Firebase:", error.message),
+      );
+    }
   }
 
   removeHolding(crypto, amount) {

@@ -159,7 +159,7 @@ async function authMenu() {
   }
 }
 
-function addToPortfolio() {
+function addToPortfolio(userName) {
   return new Promise((resolve) => {
     console.clear();
     console.log(chalk.cyan("\n---| Add to Portfolio |---\n"));
@@ -181,6 +181,7 @@ function addToPortfolio() {
         const holding = portfolio.addHolding(
           crypto.toUpperCase(),
           parseFloat(amount),
+          userName,
         );
         console.log(
           chalk.green(
