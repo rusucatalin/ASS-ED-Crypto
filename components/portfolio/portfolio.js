@@ -4,19 +4,18 @@ import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
+import { getDatabase, ref, push, set } from "firebase/database";
+import { auth } from "../../services/firebase.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const PORTFOLIO_FILE = path.join(__dirname, "../data/portfolio.json");
-
-import { getDatabase, ref, push, set } from "firebase/database";
-import { auth } from "./firebase.js";
-
+const PORTFOLIO_FILE = path.join(__dirname, "../../data/portfolio.json");
 const database = getDatabase();
 
 class Portfolio {
   constructor() {
     this.holdings = new Map();
+    this.transactions = [];
     this.loadPortfolio();
   }
 
@@ -24,16 +23,25 @@ class Portfolio {
     try {
       const data = await fs.readFile(PORTFOLIO_FILE, "utf8");
       const portfolio = JSON.parse(data);
-      this.holdings = new Map(Object.entries(portfolio));
+
+      if (portfolio.holdings) {
+        this.holdings = new Map(Object.entries(portfolio.holdings));
+      }
+
+      this.transactions = portfolio.transactions || [];
     } catch (error) {
       this.holdings = new Map();
+      this.transactions = [];
       await this.savePortfolio();
     }
   }
 
   async savePortfolio() {
     try {
-      const portfolioData = Object.fromEntries(this.holdings);
+      const portfolioData = {
+        holdings: Object.fromEntries(this.holdings),
+        transactions: this.transactions,
+      };
       await fs.writeFile(
         PORTFOLIO_FILE,
         JSON.stringify(portfolioData, null, 2),
@@ -43,34 +51,44 @@ class Portfolio {
     }
   }
 
-  async addHolding(crypto, amount, userName) {
+  async addHolding(crypto, amount, email) {
     const currentAmount = this.holdings.get(crypto) || 0;
     this.holdings.set(crypto, currentAmount + parseFloat(amount));
-    await this.savePortfolio();
 
-    await this.saveTransactionToDatabase(crypto, amount, userName);
+    const transaction = {
+      type: "BUY",
+      crypto,
+      amount: parseFloat(amount),
+      timestamp: Date.now(),
+    };
+
+    if (!this.transactions) {
+      this.transactions = [];
+    }
+
+    this.transactions.push(transaction);
+
+    await this.savePortfolio();
+    await this.saveTransactionToDatabase(crypto, amount, email);
     return this.getHoldingInfo(crypto);
   }
 
-  async saveTransactionToDatabase(crypto, amount) {
+  async saveTransactionToDatabase(crypto, amount, email) {
     try {
       const user = auth.currentUser;
       if (!user) {
         console.error("No authenticated user found");
         return;
       }
-
       const email = user.email;
       const transactionRef = ref(database, "portfolio_transactions");
       const newTransactionRef = push(transactionRef);
-
       await set(newTransactionRef, {
         email,
         crypto,
         amount,
         timestamp: Date.now(),
       });
-
       console.log(chalk.green(`\nTransaction saved to Firebase for ${email}`));
     } catch (error) {
       console.error(
@@ -82,13 +100,11 @@ class Portfolio {
   removeHolding(crypto, amount) {
     const currentAmount = this.holdings.get(crypto) || 0;
     const newAmount = currentAmount - parseFloat(amount);
-
     if (newAmount <= 0) {
       this.holdings.delete(crypto);
     } else {
       this.holdings.set(crypto, newAmount);
     }
-
     this.savePortfolio();
     return this.getHoldingInfo(crypto);
   }
@@ -109,6 +125,10 @@ class Portfolio {
       crypto,
       amount,
     }));
+  }
+
+  getTransactionHistory() {
+    return this.transactions.sort((a, b) => b.timestamp - a.timestamp);
   }
 }
 
