@@ -69,16 +69,21 @@ function drawCryptoMenu(selectedOption, previousData = "") {
   );
   console.log(
     selectedOption === 3
+      ? chalk.green("> RAY (Raydium)")
+      : chalk.white("  RAY (Raydium)"),
+  );
+  console.log(
+    selectedOption === 4
       ? chalk.green("> Add to Portfolio")
       : chalk.white("  Add to Portfolio"),
   );
   console.log(
-    selectedOption === 4
+    selectedOption === 5
       ? chalk.green("> View Portfolio")
       : chalk.white("  View Portfolio"),
   );
   console.log(
-    selectedOption === 5
+    selectedOption === 6
       ? chalk.green("> Transaction History")
       : chalk.white("  Transaction History"),
   );
@@ -130,10 +135,10 @@ function handleCryptoMenuKeypress(selectedOption) {
 
       if (key[0] === 27 && key[1] === 91) {
         if (key[2] === 65) {
-          currentOption = currentOption > 0 ? currentOption - 1 : 5;
+          currentOption = currentOption > 0 ? currentOption - 1 : 6; // Changed from 5 to 6
         }
         if (key[2] === 66) {
-          currentOption = currentOption < 5 ? currentOption + 1 : 0;
+          currentOption = currentOption < 6 ? currentOption + 1 : 0; // Changed from 5 to 6
         }
         drawCryptoMenu(currentOption, cryptoHistory);
         resolve(handleCryptoMenuKeypress(currentOption));
@@ -167,25 +172,33 @@ function addToPortfolio(email) {
     console.clear();
     console.log(chalk.cyan("\n---| Add to Portfolio |---\n"));
 
-    rl.question(chalk.yellow("Enter crypto (BTC/ETH/DOGE): "), (crypto) => {
-      if (!["BTC", "ETH", "DOGE"].includes(crypto.toUpperCase())) {
+    rl.question(chalk.yellow("Enter crypto (BTC/ETH/DOGE/RAY): "), (crypto) => {
+      if (!["BTC", "ETH", "DOGE", "RAY"].includes(crypto.toUpperCase())) {
         console.log(chalk.red("\nInvalid cryptocurrency!"));
         setTimeout(() => resolve(), 2000);
         return;
       }
 
-      rl.question(chalk.yellow("Enter amount: "), (amount) => {
+      rl.question(chalk.yellow("Enter amount: "), async (amount) => {
         if (isNaN(amount) || parseFloat(amount) <= 0) {
           console.log(chalk.red("\nInvalid amount!"));
           setTimeout(() => resolve(), 2000);
           return;
         }
 
-        const holding = portfolio.addHolding(
+        const user = auth.currentUser;
+        if (!user) {
+          console.log(chalk.red("\nUser not authenticated!"));
+          setTimeout(() => resolve(), 2000);
+          return;
+        }
+
+        const holding = await portfolio.addHolding(
           crypto.toUpperCase(),
           parseFloat(amount),
-          email,
+          user.email,
         );
+
         console.log(
           chalk.green(
             `\nAdded ${amount} ${crypto.toUpperCase()} to portfolio!`,
@@ -202,7 +215,15 @@ function viewPortfolio() {
     console.clear();
     console.log(chalk.cyan("\n---| Your Portfolio |---\n"));
 
-    const holdings = portfolio.getAllHoldings();
+    const user = auth.currentUser;
+    if (!user) {
+      console.log(chalk.red("User not authenticated!"));
+      console.log(chalk.gray("\nPress any key to continue..."));
+      process.stdin.once("data", () => resolve());
+      return;
+    }
+
+    const holdings = portfolio.getAllHoldings(user.email);
 
     if (holdings.length === 0) {
       console.log(chalk.yellow("Your portfolio is empty!"));
@@ -224,7 +245,15 @@ function viewTransactionHistory() {
     console.clear();
     console.log(chalk.cyan("\n---| Transaction History |---\n"));
 
-    const transactions = portfolio.getTransactionHistory();
+    const user = auth.currentUser;
+    if (!user) {
+      console.log(chalk.red("User not authenticated!"));
+      console.log(chalk.gray("\nPress any key to continue..."));
+      process.stdin.once("data", () => resolve());
+      return;
+    }
+
+    const transactions = portfolio.getTransactionHistory(user.email);
 
     if (transactions.length === 0) {
       console.log(chalk.yellow("No transactions found!"));
@@ -248,13 +277,13 @@ async function cryptoMenu() {
   console.clear();
   drawCryptoMenu(0, cryptoHistory);
   const selectedOption = await handleCryptoMenuKeypress(0);
-  const cryptoOptions = ["btc", "eth", "doge"];
+  const cryptoOptions = ["btc", "eth", "doge", "ray"];
 
-  if (selectedOption === 3) {
+  if (selectedOption === 4) {
     await addToPortfolio();
-  } else if (selectedOption === 4) {
-    await viewPortfolio();
   } else if (selectedOption === 5) {
+    await viewPortfolio();
+  } else if (selectedOption === 6) {
     await viewTransactionHistory();
   } else {
     console.log(

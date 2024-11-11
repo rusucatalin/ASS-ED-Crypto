@@ -15,6 +15,8 @@ const cryptoIds = {
   btc: "bitcoin",
   eth: "ethereum",
   doge: "dogecoin",
+  ray: "raydium",
+  fsusd: "fdusd",
 };
 
 function drawLoadingBar(progress) {

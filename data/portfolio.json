@@ -1,75 +1,28 @@
 {
   "holdings": {
-    "DOGE": 245,
-    "BTC": 1266,
-    "ETH": 223
-  },
-  "transactions": [
-    {
-      "type": "BUY",
-      "crypto": "BTC",
-      "amount": 1234,
-      "timestamp": 1731259339402
+    "user9@gmail.com": {
+      "RAY": 100
     },
-    {
-      "type": "BUY",
-      "crypto": "DOGE",
-      "amount": 222,
-      "timestamp": 1731258662601
-    },
-    {
-      "type": "BUY",
-      "crypto": "ETH",
-      "amount": 23,
-      "timestamp": 1731215503366
-    },
-    {
-      "type": "BUY",
-      "crypto": "BTC",
-      "amount": 2,
-      "timestamp": 1731215376886
-    },
-    {
-      "type": "BUY",
-      "crypto": "BTC",
-      "amount": 2,
-      "timestamp": 1731215366965
-    },
-    {
-      "type": "BUY",
-      "crypto": "BTC",
-      "amount": 23,
-      "timestamp": 1731215358797
-    },
-    {
-      "type": "BUY",
-      "crypto": "BTC",
-      "amount": 2,
-      "timestamp": 1731215332990
-    },
-    {
-      "type": "BUY",
-      "crypto": "ETH",
-      "amount": 200,
-      "timestamp": 1731215285879
-    },
-    {
-      "type": "BUY",
-      "crypto": "BTC",
-      "amount": 2,
-      "timestamp": 1731215202412
-    },
-    {
-      "type": "BUY",
-      "crypto": "DOGE",
-      "amount": 23,
-      "timestamp": 1731213775936
-    },
-    {
-      "type": "BUY",
-      "crypto": "BTC",
-      "amount": 1,
-      "timestamp": 1731259358104
+    "user1@gmail.com": {
+      "BTC": 1
     }
-  ]
+  },
+  "transactions": {
+    "user9@gmail.com": [
+      {
+        "type": "BUY",
+        "crypto": "RAY",
+        "amount": 100,
+        "timestamp": 1731333668341
+      }
+    ],
+    "user1@gmail.com": [
+      {
+        "type": "BUY",
+        "crypto": "BTC",
+        "amount": 1,
+        "timestamp": 1731333710709
+      }
+    ]
+  }
 }
