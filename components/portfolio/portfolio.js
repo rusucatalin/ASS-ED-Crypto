@@ -14,8 +14,9 @@ const database = getDatabase();
 
 class Portfolio {
   constructor() {
-    this.holdings = new Map();
-    this.transactions = [];
+    // Change the structure to store holdings per email
+    this.holdings = new Map(); // Map<email, Map<crypto, amount>>
+    this.transactions = new Map(); // Map<email, Array<transaction>>
     this.loadPortfolio();
   }
 
@@ -25,13 +26,21 @@ class Portfolio {
       const portfolio = JSON.parse(data);
 
       if (portfolio.holdings) {
-        this.holdings = new Map(Object.entries(portfolio.holdings));
+        // Convert the loaded data into nested Maps
+        this.holdings = new Map(
+          Object.entries(portfolio.holdings).map(([email, holdings]) => [
+            email,
+            new Map(Object.entries(holdings)),
+          ]),
+        );
       }
 
-      this.transactions = portfolio.transactions || [];
+      if (portfolio.transactions) {
+        this.transactions = new Map(Object.entries(portfolio.transactions));
+      }
     } catch (error) {
       this.holdings = new Map();
-      this.transactions = [];
+      this.transactions = new Map();
       await this.savePortfolio();
     }
   }
@@ -39,9 +48,15 @@ class Portfolio {
   async savePortfolio() {
     try {
       const portfolioData = {
-        holdings: Object.fromEntries(this.holdings),
-        transactions: this.transactions,
+        holdings: Object.fromEntries(
+          Array.from(this.holdings.entries()).map(([email, holdings]) => [
+            email,
+            Object.fromEntries(holdings),
+          ]),
+        ),
+        transactions: Object.fromEntries(this.transactions),
       };
+
       await fs.writeFile(
         PORTFOLIO_FILE,
         JSON.stringify(portfolioData, null, 2),
@@ -52,8 +67,19 @@ class Portfolio {
   }
 
   async addHolding(crypto, amount, email) {
-    const currentAmount = this.holdings.get(crypto) || 0;
-    this.holdings.set(crypto, currentAmount + parseFloat(amount));
+    // Initialize holdings for this email if it doesn't exist
+    if (!this.holdings.has(email)) {
+      this.holdings.set(email, new Map());
+    }
+
+    const userHoldings = this.holdings.get(email);
+    const currentAmount = userHoldings.get(crypto) || 0;
+    userHoldings.set(crypto, currentAmount + parseFloat(amount));
+
+    // Initialize transactions for this email if it doesn't exist
+    if (!this.transactions.has(email)) {
+      this.transactions.set(email, []);
+    }
 
     const transaction = {
       type: "BUY",
@@ -62,25 +88,17 @@ class Portfolio {
       timestamp: Date.now(),
     };
 
-    if (!this.transactions) {
-      this.transactions = [];
-    }
-
-    this.transactions.push(transaction);
+    const userTransactions = this.transactions.get(email);
+    userTransactions.push(transaction);
 
     await this.savePortfolio();
     await this.saveTransactionToDatabase(crypto, amount, email);
-    return this.getHoldingInfo(crypto);
+
+    return this.getHoldingInfo(crypto, email);
   }
 
   async saveTransactionToDatabase(crypto, amount, email) {
     try {
-      const user = auth.currentUser;
-      if (!user) {
-        console.error("No authenticated user found");
-        return;
-      }
-      const email = user.email;
       const transactionRef = ref(database, "portfolio_transactions");
       const newTransactionRef = push(transactionRef);
       await set(newTransactionRef, {
@@ -97,38 +115,50 @@ class Portfolio {
     }
   }
 
-  removeHolding(crypto, amount) {
-    const currentAmount = this.holdings.get(crypto) || 0;
+  removeHolding(crypto, amount, email) {
+    if (!this.holdings.has(email)) return null;
+
+    const userHoldings = this.holdings.get(email);
+    const currentAmount = userHoldings.get(crypto) || 0;
     const newAmount = currentAmount - parseFloat(amount);
+
     if (newAmount <= 0) {
-      this.holdings.delete(crypto);
+      userHoldings.delete(crypto);
     } else {
-      this.holdings.set(crypto, newAmount);
+      userHoldings.set(crypto, newAmount);
     }
+
     this.savePortfolio();
-    return this.getHoldingInfo(crypto);
+    return this.getHoldingInfo(crypto, email);
   }
 
-  getHolding(crypto) {
-    return this.holdings.get(crypto) || 0;
+  getHolding(crypto, email) {
+    if (!this.holdings.has(email)) return 0;
+    return this.holdings.get(email).get(crypto) || 0;
   }
 
-  getHoldingInfo(crypto) {
+  getHoldingInfo(crypto, email) {
     return {
       crypto,
-      amount: this.getHolding(crypto),
+      amount: this.getHolding(crypto, email),
     };
   }
 
-  getAllHoldings() {
-    return Array.from(this.holdings.entries()).map(([crypto, amount]) => ({
+  getAllHoldings(email) {
+    if (!this.holdings.has(email)) return [];
+
+    const userHoldings = this.holdings.get(email);
+    return Array.from(userHoldings.entries()).map(([crypto, amount]) => ({
       crypto,
       amount,
     }));
   }
 
-  getTransactionHistory() {
-    return this.transactions.sort((a, b) => b.timestamp - a.timestamp);
+  getTransactionHistory(email) {
+    if (!this.transactions.has(email)) return [];
+    return this.transactions
+      .get(email)
+      .sort((a, b) => b.timestamp - a.timestamp);
   }
 }
 
