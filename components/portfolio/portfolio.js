@@ -14,9 +14,8 @@ const database = getDatabase();
 
 class Portfolio {
   constructor() {
-    // Change the structure to store holdings per email
-    this.holdings = new Map(); // Map<email, Map<crypto, amount>>
-    this.transactions = new Map(); // Map<email, Array<transaction>>
+    this.holdings = new Map();
+    this.transactions = new Map();
     this.loadPortfolio();
   }
 
@@ -26,7 +25,6 @@ class Portfolio {
       const portfolio = JSON.parse(data);
 
       if (portfolio.holdings) {
-        // Convert the loaded data into nested Maps
         this.holdings = new Map(
           Object.entries(portfolio.holdings).map(([email, holdings]) => [
             email,
@@ -67,7 +65,6 @@ class Portfolio {
   }
 
   async addHolding(crypto, amount, email) {
-    // Initialize holdings for this email if it doesn't exist
     if (!this.holdings.has(email)) {
       this.holdings.set(email, new Map());
     }
@@ -76,7 +73,6 @@ class Portfolio {
     const currentAmount = userHoldings.get(crypto) || 0;
     userHoldings.set(crypto, currentAmount + parseFloat(amount));
 
-    // Initialize transactions for this email if it doesn't exist
     if (!this.transactions.has(email)) {
       this.transactions.set(email, []);
     }
