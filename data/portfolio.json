@@ -11,7 +11,8 @@
       "BTC": 100
     },
     "user10@gmail.com": {
-      "ETH": 0.5
+      "ETH": 0.5,
+      "BTC": 0.02
     }
   },
   "transactions": {
@@ -70,6 +71,14 @@
         "usdValue": 1692.47,
         "pricePerUnit": 3384.94,
         "timestamp": 1731395816224
+      },
+      {
+        "type": "BUY",
+        "crypto": "BTC",
+        "amount": 0.02,
+        "usdValue": 1787,
+        "pricePerUnit": 89350,
+        "timestamp": 1731396982370
       }
     ]
   }
