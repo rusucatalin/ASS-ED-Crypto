@@ -19,11 +19,30 @@ class Portfolio {
     this.loadPortfolio();
   }
 
+  async getCryptoPrice(crypto) {
+    const cryptoMap = {
+      BTC: "bitcoin",
+      ETH: "ethereum",
+      DOGE: "dogecoin",
+      RAY: "raydium",
+    };
+
+    try {
+      const response = await fetch(
+        `${process.env.COINGECKO_API_URL}?ids=${cryptoMap[crypto]}&vs_currencies=usd&x_cg_demo_api_key=${process.env.COINGECKO_API_KEY}`,
+      );
+      const data = await response.json();
+      return data[cryptoMap[crypto]].usd;
+    } catch (error) {
+      console.error(chalk.red("Error fetching price:", error.message));
+      return null;
+    }
+  }
+
   async loadPortfolio() {
     try {
       const data = await fs.readFile(PORTFOLIO_FILE, "utf8");
       const portfolio = JSON.parse(data);
-
       if (portfolio.holdings) {
         this.holdings = new Map(
           Object.entries(portfolio.holdings).map(([email, holdings]) => [
@@ -32,7 +51,6 @@ class Portfolio {
           ]),
         );
       }
-
       if (portfolio.transactions) {
         this.transactions = new Map(Object.entries(portfolio.transactions));
       }
@@ -54,7 +72,6 @@ class Portfolio {
         ),
         transactions: Object.fromEntries(this.transactions),
       };
-
       await fs.writeFile(
         PORTFOLIO_FILE,
         JSON.stringify(portfolioData, null, 2),
@@ -65,10 +82,12 @@ class Portfolio {
   }
 
   async addHolding(crypto, amount, email) {
+    const price = await this.getCryptoPrice(crypto);
+    const usdValue = price * parseFloat(amount);
+
     if (!this.holdings.has(email)) {
       this.holdings.set(email, new Map());
     }
-
     const userHoldings = this.holdings.get(email);
     const currentAmount = userHoldings.get(crypto) || 0;
     userHoldings.set(crypto, currentAmount + parseFloat(amount));
@@ -81,6 +100,8 @@ class Portfolio {
       type: "BUY",
       crypto,
       amount: parseFloat(amount),
+      usdValue,
+      pricePerUnit: price,
       timestamp: Date.now(),
     };
 
@@ -88,12 +109,23 @@ class Portfolio {
     userTransactions.push(transaction);
 
     await this.savePortfolio();
-    await this.saveTransactionToDatabase(crypto, amount, email);
-
+    await this.saveTransactionToDatabase(
+      crypto,
+      amount,
+      usdValue,
+      price,
+      email,
+    );
     return this.getHoldingInfo(crypto, email);
   }
 
-  async saveTransactionToDatabase(crypto, amount, email) {
+  async saveTransactionToDatabase(
+    crypto,
+    amount,
+    usdValue,
+    pricePerUnit,
+    email,
+  ) {
     try {
       const transactionRef = ref(database, "portfolio_transactions");
       const newTransactionRef = push(transactionRef);
@@ -101,6 +133,8 @@ class Portfolio {
         email,
         crypto,
         amount,
+        usdValue,
+        pricePerUnit,
         timestamp: Date.now(),
       });
       console.log(chalk.green(`\nTransaction saved to Firebase for ${email}`));
@@ -113,17 +147,14 @@ class Portfolio {
 
   removeHolding(crypto, amount, email) {
     if (!this.holdings.has(email)) return null;
-
     const userHoldings = this.holdings.get(email);
     const currentAmount = userHoldings.get(crypto) || 0;
     const newAmount = currentAmount - parseFloat(amount);
-
     if (newAmount <= 0) {
       userHoldings.delete(crypto);
     } else {
       userHoldings.set(crypto, newAmount);
     }
-
     this.savePortfolio();
     return this.getHoldingInfo(crypto, email);
   }
@@ -133,21 +164,36 @@ class Portfolio {
     return this.holdings.get(email).get(crypto) || 0;
   }
 
-  getHoldingInfo(crypto, email) {
+  async getHoldingInfo(crypto, email) {
+    const amount = this.getHolding(crypto, email);
+    const price = await this.getCryptoPrice(crypto);
+    const usdValue = price * amount;
+
     return {
       crypto,
-      amount: this.getHolding(crypto, email),
+      amount,
+      pricePerUnit: price,
+      usdValue,
     };
   }
 
-  getAllHoldings(email) {
+  async getAllHoldings(email) {
     if (!this.holdings.has(email)) return [];
-
     const userHoldings = this.holdings.get(email);
-    return Array.from(userHoldings.entries()).map(([crypto, amount]) => ({
-      crypto,
-      amount,
-    }));
+
+    const holdingsWithPrices = await Promise.all(
+      Array.from(userHoldings.entries()).map(async ([crypto, amount]) => {
+        const price = await this.getCryptoPrice(crypto);
+        return {
+          crypto,
+          amount,
+          pricePerUnit: price,
+          usdValue: price * amount,
+        };
+      }),
+    );
+
+    return holdingsWithPrices;
   }
 
   getTransactionHistory(email) {

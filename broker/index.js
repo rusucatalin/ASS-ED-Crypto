@@ -201,7 +201,7 @@ function addToPortfolio(email) {
 
         console.log(
           chalk.green(
-            `\nAdded ${amount} ${crypto.toUpperCase()} to portfolio!`,
+            `\nAdded ${amount} ${crypto.toUpperCase()} (${chalk.yellow("$" + (holding.usdValue || 0).toFixed(2))}) to portfolio!`,
           ),
         );
         setTimeout(() => resolve(), 2000);
@@ -211,7 +211,7 @@ function addToPortfolio(email) {
 }
 
 function viewPortfolio() {
-  return new Promise((resolve) => {
+  return new Promise(async (resolve) => {
     console.clear();
     console.log(chalk.cyan("\n---| Your Portfolio |---\n"));
 
@@ -223,14 +223,18 @@ function viewPortfolio() {
       return;
     }
 
-    const holdings = portfolio.getAllHoldings(user.email);
+    const holdings = await portfolio.getAllHoldings(user.email);
 
     if (holdings.length === 0) {
       console.log(chalk.yellow("Your portfolio is empty!"));
     } else {
       holdings.forEach((holding) => {
+        const usdValue = holding.usdValue || 0;
+        const pricePerUnit = holding.pricePerUnit || 0;
         console.log(
-          chalk.white(`${holding.crypto}: ${chalk.green(holding.amount)}`),
+          chalk.white(
+            `${holding.crypto}: ${chalk.green(holding.amount)} (${chalk.yellow("$" + usdValue.toFixed(2))} @ $${pricePerUnit.toFixed(2)})`,
+          ),
         );
       });
     }
@@ -260,9 +264,11 @@ function viewTransactionHistory() {
     } else {
       transactions.forEach((tx) => {
         const date = new Date(tx.timestamp).toLocaleString();
+        const usdValue = tx.usdValue || 0;
+        const pricePerUnit = tx.pricePerUnit || 0;
         console.log(
           chalk.white(
-            `${date} - ${tx.type}: ${chalk.green(tx.amount)} ${tx.crypto}`,
+            `${date} - ${tx.type}: ${chalk.green(tx.amount)} ${tx.crypto} (${chalk.yellow("$" + usdValue.toFixed(2))} @ $${pricePerUnit.toFixed(2)})`,
           ),
         );
       });

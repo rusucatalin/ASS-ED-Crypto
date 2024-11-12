@@ -4,7 +4,14 @@
       "RAY": 100
     },
     "user1@gmail.com": {
-      "BTC": 1
+      "BTC": 1,
+      "RAY": "[object Object]12"
+    },
+    "valera20cm@gmail.com": {
+      "BTC": 100
+    },
+    "user10@gmail.com": {
+      "ETH": 0.5
     }
   },
   "transactions": {
@@ -19,9 +26,50 @@
     "user1@gmail.com": [
       {
         "type": "BUY",
+        "crypto": "RAY",
+        "amount": 1,
+        "usdValue": 4.96,
+        "pricePerUnit": 4.96,
+        "timestamp": 1731395312815
+      },
+      {
+        "type": "BUY",
+        "crypto": "RAY",
+        "amount": 1,
+        "usdValue": 4.87,
+        "timestamp": 1731393686005
+      },
+      {
+        "type": "BUY",
         "crypto": "BTC",
         "amount": 1,
         "timestamp": 1731333710709
+      },
+      {
+        "type": "BUY",
+        "crypto": "RAY",
+        "amount": 2,
+        "usdValue": 9.98,
+        "pricePerUnit": 4.99,
+        "timestamp": 1731395775043
+      }
+    ],
+    "valera20cm@gmail.com": [
+      {
+        "type": "BUY",
+        "crypto": "BTC",
+        "amount": 100,
+        "timestamp": 1731338481357
+      }
+    ],
+    "user10@gmail.com": [
+      {
+        "type": "BUY",
+        "crypto": "ETH",
+        "amount": 0.5,
+        "usdValue": 1692.47,
+        "pricePerUnit": 3384.94,
+        "timestamp": 1731395816224
       }
     ]
   }
