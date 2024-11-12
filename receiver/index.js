@@ -6,6 +6,11 @@ import { fileURLToPath } from "url";
 import { dirname } from "path";
 import dotenv from "dotenv";
 
+import kafka from "kafka-node";
+const client = new kafka.KafkaClient({ kafkaHost: "localhost:9092" });
+
+const producer = new kafka.Producer(client);
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 

@@ -10,6 +10,9 @@ import dotenv from "dotenv";
 import readline from "readline";
 import { portfolio } from "../components/portfolio/portfolio.js";
 
+import kafka from "kafka-node";
+const client = new kafka.KafkaClient({ kafkaHost: "localhost:9092" });
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
